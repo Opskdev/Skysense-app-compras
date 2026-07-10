@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>App Compras</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif; background:#fff; color:#1a1a2e; }
+    header {
+      display:flex; align-items:center; gap:14px; padding:14px 24px;
+      border-bottom:1px solid #e5e7eb; position:sticky; top:0; background:#fff; z-index:20;
+    }
+    .logo { width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#2563eb,#1e40af);
+      color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700; }
+    header h1 { font-size:17px; }
+    .spacer { flex:1; }
+    .who { font-size:13px; color:#6b7280; }
+    .badge { font-size:11px; font-weight:700; padding:3px 9px; border-radius:20px; margin-left:6px; }
+    .badge.admin { background:#eef2ff; color:#4338ca; }
+    .badge.pm { background:#ecfdf5; color:#047857; }
+    .btn-out { border:1px solid #d1d5db; background:#fff; padding:7px 14px; border-radius:9px;
+      font-size:13px; cursor:pointer; }
+    .btn-out:hover { background:#f9fafb; }
+    nav { display:flex; gap:6px; padding:14px 24px 0; }
+    .tab { padding:10px 18px; border:none; background:none; font-size:14px; font-weight:600;
+      color:#6b7280; cursor:pointer; border-bottom:2px solid transparent; }
+    .tab.active { color:#2563eb; border-bottom-color:#2563eb; }
+    main { padding:18px 24px 60px; }
+    .toolbar { display:flex; gap:10px; align-items:center; margin-bottom:14px; flex-wrap:wrap; }
+    .search { flex:1; min-width:200px; padding:9px 13px; border:1px solid #d1d5db; border-radius:9px; font-size:14px; }
+    .btn { background:#2563eb; color:#fff; border:none; padding:9px 16px; border-radius:9px;
+      font-size:13px; font-weight:600; cursor:pointer; }
+    .btn:hover { background:#1e40af; }
+    .btn.ghost { background:#fff; color:#2563eb; border:1px solid #2563eb; }
+    .count { font-size:13px; color:#6b7280; }
+    .tablewrap { overflow:auto; border:1px solid #e5e7eb; border-radius:12px; max-height:70vh; }
+    table { border-collapse:collapse; width:100%; font-size:12.5px; white-space:nowrap; }
+    th { position:sticky; top:0; background:#f8fafc; text-align:left; padding:10px 12px;
+      font-weight:700; color:#374151; border-bottom:1px solid #e5e7eb; z-index:5; }
+    td { padding:9px 12px; border-bottom:1px solid #f1f5f9; }
+    tr:hover td { background:#fafbff; }
+    .status { padding:2px 8px; border-radius:20px; font-size:11px; font-weight:600; }
+    .st-pagado { background:#ecfdf5; color:#047857; }
+    .st-otro { background:#f3f4f6; color:#4b5563; }
+    .num { text-align:right; font-variant-numeric:tabular-nums; }
+    .link { color:#2563eb; cursor:pointer; font-weight:600; }
+    .empty { padding:40px; text-align:center; color:#9ca3af; }
+    .hidden { display:none; }
+    /* Modal */
+    .overlay { position:fixed; inset:0; background:rgba(15,23,42,.45); display:none;
+      align-items:center; justify-content:center; z-index:50; padding:16px; }
+    .overlay.show { display:flex; }
+    .modal { background:#fff; border-radius:16px; width:100%; max-width:560px; max-height:88vh;
+      overflow:auto; padding:24px; }
+    .modal h3 { font-size:18px; margin-bottom:6px; }
+    .modal .sub { font-size:13px; color:#6b7280; margin-bottom:16px; }
+    .modal-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:18px; flex-wrap:wrap; }
+    .kv { font-size:13px; margin:4px 0; color:#374151; }
+    .kv b { color:#111827; }
+    .divider { height:1px; background:#e5e7eb; margin:16px 0; }
+    textarea { width:100%; min-height:70px; padding:11px; border:1px solid #d1d5db; border-radius:10px;
+      font-family:inherit; font-size:14px; resize:vertical; }
+    .timeline { margin-top:14px; }
+    .cmt { border-left:3px solid #2563eb; padding:8px 0 8px 12px; margin-bottom:12px; }
+    .cmt .meta { font-size:11px; color:#9ca3af; margin-bottom:3px; }
+    .cmt .txt { font-size:13.5px; line-height:1.5; white-space:pre-wrap; }
+    .toast { position:fixed; bottom:22px; left:50%; transform:translateX(-50%); background:#111827;
+      color:#fff; padding:11px 20px; border-radius:10px; font-size:13px; z-index:99; display:none; }
+    .toast.show { display:block; }
+    .spin { padding:40px; text-align:center; color:#9ca3af; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">C</div>
+    <h1>App Compras</h1>
+    <div class="spacer"></div>
+    <span class="who" id="who"></span>
+    <button class="btn-out" id="logout">Cerrar sesión</button>
+  </header>
+
+  <nav id="nav"></nav>
+  <main>
+    <!-- ===== GENERAL COMPRAS (solo admin) ===== -->
+    <section id="mod-general" class="hidden">
+      <div class="toolbar">
+        <input class="search" id="search-g" placeholder="Buscar por proyecto, OC, razón social..." />
+        <button class="btn ghost" id="btn-import">⬆ Cargar Excel</button>
+        <input type="file" id="file-import" accept=".xlsx,.xls" class="hidden" />
+        <span class="count" id="count-g"></span>
+      </div>
+      <div class="tablewrap"><div id="table-g" class="spin">Cargando…</div></div>
+    </section>
+
+    <!-- ===== PAGOS (admin y pm) ===== -->
+    <section id="mod-pagos" class="hidden">
+      <div class="toolbar">
+        <input class="search" id="search-p" placeholder="Buscar por proyecto, OC, razón social..." />
+        <span class="count" id="count-p"></span>
+      </div>
+      <div class="tablewrap"><div id="table-p" class="spin">Cargando…</div></div>
+    </section>
+  </main>
+
+  <!-- Modal comentarios -->
+  <div class="overlay" id="ov-cmt">
+    <div class="modal">
+      <h3>Seguimiento de pago</h3>
+      <p class="sub" id="cmt-sub"></p>
+      <div id="cmt-info"></div>
+      <div class="divider"></div>
+      <label style="font-size:13px;font-weight:600;">Nuevo comentario</label>
+      <textarea id="cmt-text" placeholder="Escribe un comentario para el cronograma..."></textarea>
+      <div class="modal-actions">
+        <button class="btn ghost" id="cmt-close">Cerrar</button>
+        <button class="btn" id="cmt-add">Agregar comentario</button>
+      </div>
+      <div class="timeline" id="cmt-timeline"></div>
+    </div>
+  </div>
+
+  <!-- Modal importar (agregar vs reemplazar) -->
+  <div class="overlay" id="ov-import">
+    <div class="modal">
+      <h3>Cargar Excel</h3>
+      <p class="sub" id="imp-sub"></p>
+      <p class="kv">¿Qué deseas hacer con la información del archivo?</p>
+      <div class="modal-actions" style="justify-content:flex-start;">
+        <button class="btn ghost" id="imp-append">➕ Agregar a lo existente</button>
+        <button class="btn" id="imp-replace" style="background:#dc2626;">♻ Reemplazar todo</button>
+      </div>
+      <div class="modal-actions"><button class="btn ghost" id="imp-cancel">Cancelar</button></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="js/config.js"></script>
+  <script>
+    const $ = (id)=>document.getElementById(id);
+    let USER = null;
+    let filasImport = null; // buffer del excel
+
+    // ---- Definicion de columnas ----
+    const COLS_GENERAL = [
+      ["estatus_entrega_finanzas","ESTATUS ENTREGA FINANZAS"],
+      ["estatus_pago","ESTATUS PAGO","status"],
+      ["fecha_pago","FECHA DE PAGO","date"],
+      ["cantidad_pagada","CANTIDAD PAGADA","num"],
+      ["diferencia_pago_vs_factura","DIFERENCIA PAGO VS FACTURA","num"],
+      ["fecha_solicitud","FECHA SOLICITUD","date"],
+      ["proyecto","PROYECTO"],
+      ["oc","OC"],
+      ["concepto","CONCEPTO"],
+      ["razon_social","RAZON SOCIAL"],
+      ["moneda","MONEDA"],
+      ["total_oc","TOTAL OC","num"],
+      ["total_a_pagar","TOTAL A PAGAR","num"],
+      ["folio_fiscal","FOLIOFISCAL"],
+      ["condiciones_pago","CONDICIONES DE PAGO"],
+      ["observaciones","OBSERVACIONES"],
+      ["factura_en_sistema","FACTURA EN SISTEMA"],
+      ["evidencia_estimacion","EVIDENCIA o ESTIMACION"],
+      ["validacion_material","VALIDACION DE MATERIAL"],
+      ["obs_finanzas","OBS FINANZAS"],
+      ["conteo_dev","CONTEO DEV"],
+    ];
+    const COLS_PAGOS = [
+      ["estatus_entrega_finanzas","ESTATUS ENTREGA FINANZAS"],
+      ["estatus_pago","ESTATUS PAGO","status"],
+      ["fecha_pago","FECHA DE PAGO","date"],
+      ["cantidad_pagada","CANTIDAD PAGADA","num"],
+      ["diferencia_pago_vs_factura","DIFERENCIA PAGO VS FACTURA","num"],
+      ["proyecto","PROYECTO"],
+      ["oc","OC"],
+      ["razon_social","RAZON SOCIAL"],
+      ["moneda","MONEDA"],
+      ["cantidad_factura","CANTIDAD FACTURA","num"],
+      ["cantidad_solicitada","CANTIDAD SOLICITADA","num"],
+      ["factura","FACTURA"],
+      ["observaciones","OBSERVACIONES"],
+    ];
+
+    // Mapa header Excel -> columna DB (para importar la hoja GENERAL Compras)
+    const HEADER_MAP = {};
+    COLS_GENERAL.forEach(c => HEADER_MAP[c[1].toUpperCase().trim()] = c[0]);
+
+    // ---- Utilidades de formato ----
+    function fmtNum(v){ if(v===null||v===undefined||v==="") return ""; const n=Number(v);
+      return isNaN(n)? v : n.toLocaleString("es-MX",{minimumFractionDigits:2,maximumFractionDigits:2}); }
+    function fmtDate(v){ if(!v) return ""; const d=new Date(v); return isNaN(d)? v : d.toLocaleDateString("es-MX"); }
+    function esc(s){ return (s??"").toString().replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+    function toast(t){ const el=$("toast"); el.textContent=t; el.classList.add("show"); setTimeout(()=>el.classList.remove("show"),2600); }
+
+    // ---- Arranque: guardia de sesion + rol ----
+    (async ()=>{
+      USER = await obtenerUsuarioYRol();
+      if(!USER){ location.href="login.html"; return; }
+      $("who").innerHTML = esc(USER.email) +
+        `<span class="badge ${USER.rol}">${USER.rol.toUpperCase()}</span>`;
+
+      // Construir pestañas segun rol
+      const nav = $("nav");
+      if(USER.rol === "admin"){
+        nav.innerHTML =
+          `<button class="tab active" data-t="general">📋 General Compras</button>
+           <button class="tab" data-t="pagos">💳 Pagos</button>`;
+        mostrar("general");
+      } else {
+        nav.innerHTML = `<button class="tab active" data-t="pagos">💳 Pagos</button>`;
+        mostrar("pagos");
+      }
+      nav.querySelectorAll(".tab").forEach(b=>{
+        b.onclick = ()=>{
+          nav.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
+          b.classList.add("active");
+          mostrar(b.dataset.t);
+        };
+      });
+    })();
+
+    function mostrar(t){
+      $("mod-general").classList.toggle("hidden", t!=="general");
+      $("mod-pagos").classList.toggle("hidden", t!=="pagos");
+      if(t==="general") cargarGeneral();
+      if(t==="pagos") cargarPagos();
+    }
+
+    $("logout").onclick = async ()=>{ await sb.auth.signOut(); location.href="login.html"; };
+
+    // ================= GENERAL COMPRAS =================
+    let dataG = [];
+    async function cargarGeneral(){
+      $("table-g").className="spin"; $("table-g").textContent="Cargando…";
+      const { data, error } = await sb.from("compras").select("*").order("fecha_solicitud",{ascending:false}).limit(5000);
+      if(error){ $("table-g").innerHTML=`<div class="empty">Error: ${esc(error.message)}</div>`; return; }
+      dataG = data||[];
+      pintarGeneral(dataG);
+    }
+    function pintarGeneral(rows){
+      $("count-g").textContent = `${rows.length} registros`;
+      if(!rows.length){ $("table-g").className=""; $("table-g").innerHTML=`<div class="empty">Sin registros. Carga un Excel para empezar.</div>`; return; }
+      let h="<table><thead><tr>";
+      COLS_GENERAL.forEach(c=> h+=`<th>${c[1]}</th>`);
+      h+="</tr></thead><tbody>";
+      rows.forEach(r=>{
+        h+="<tr>";
+        COLS_GENERAL.forEach(c=>{
+          const [k,,tipo]=c; let v=r[k];
+          if(tipo==="num") h+=`<td class="num">${fmtNum(v)}</td>`;
+          else if(tipo==="date") h+=`<td>${fmtDate(v)}</td>`;
+          else if(tipo==="status") h+=`<td><span class="status ${(v||"").toLowerCase()==="pagado"?"st-pagado":"st-otro"}">${esc(v)}</span></td>`;
+          else h+=`<td>${esc(v)}</td>`;
+        });
+        h+="</tr>";
+      });
+      h+="</tbody></table>";
+      $("table-g").className=""; $("table-g").innerHTML=h;
+    }
+    $("search-g").oninput = (e)=>{
+      const q=e.target.value.toLowerCase();
+      pintarGeneral(dataG.filter(r=>[r.proyecto,r.oc,r.razon_social,r.concepto].some(x=>(x||"").toString().toLowerCase().includes(q))));
+    };
+
+    // ---- Importar Excel ----
+    $("btn-import").onclick = ()=> $("file-import").click();
+    $("file-import").onchange = (e)=>{
+      const file = e.target.files[0]; if(!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev)=>{
+        try{
+          const wb = XLSX.read(new Uint8Array(ev.target.result), {type:"array", cellDates:true});
+          const sheetName = wb.SheetNames.find(n=>/general/i.test(n)) || wb.SheetNames[0];
+          const raw = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], {defval:null, raw:true});
+          filasImport = mapearFilas(raw);
+          if(!filasImport.length){ toast("No se encontraron filas válidas en la hoja."); return; }
+          $("imp-sub").textContent = `Hoja "${sheetName}": ${filasImport.length} filas listas para cargar.`;
+          $("ov-import").classList.add("show");
+        }catch(err){ toast("Error al leer el archivo: "+err.message); }
+        $("file-import").value="";
+      };
+      reader.readAsArrayBuffer(file);
+    };
+    function mapearFilas(raw){
+      const out=[];
+      raw.forEach(row=>{
+        const obj={}; let vacio=true;
+        Object.keys(row).forEach(h=>{
+          const key = HEADER_MAP[h.toUpperCase().trim()];
+          if(!key) return;
+          let v = row[h];
+          if(v==="#REF!"||v==="#N/A"||v==="") v=null;
+          if(v instanceof Date) v = v.toISOString().slice(0,10);
+          obj[key]=v; if(v!==null&&v!==undefined) vacio=false;
+        });
+        if(!vacio) out.push(obj);
+      });
+      return out;
+    }
+    $("imp-cancel").onclick = ()=>{ filasImport=null; $("ov-import").classList.remove("show"); };
+    $("imp-append").onclick = ()=> ejecutarImport(false);
+    $("imp-replace").onclick = ()=> ejecutarImport(true);
+
+    async function ejecutarImport(reemplazar){
+      if(!filasImport) return;
+      $("ov-import").classList.remove("show");
+      toast(reemplazar?"Reemplazando datos…":"Agregando datos…");
+      try{
+        if(reemplazar){
+          const { error:delErr } = await sb.from("compras").delete().not("id","is",null);
+          if(delErr) throw delErr;
+        }
+        // Insertar por lotes de 500
+        for(let i=0;i<filasImport.length;i+=500){
+          const lote = filasImport.slice(i,i+500);
+          const { error } = await sb.from("compras").insert(lote);
+          if(error) throw error;
+        }
+        toast(`✔ ${filasImport.length} registros cargados.`);
+        filasImport=null;
+        cargarGeneral();
+      }catch(err){ toast("Error al cargar: "+err.message); }
+    }
+
+    // ================= PAGOS =================
+    let dataP = [];
+    async function cargarPagos(){
+      $("table-p").className="spin"; $("table-p").textContent="Cargando…";
+      const { data, error } = await sb.from("vista_pagos").select("*").limit(5000);
+      if(error){ $("table-p").innerHTML=`<div class="empty">Error: ${esc(error.message)}</div>`; return; }
+      dataP = data||[];
+      pintarPagos(dataP);
+    }
+    function pintarPagos(rows){
+      $("count-p").textContent = `${rows.length} registros`;
+      if(!rows.length){ $("table-p").className=""; $("table-p").innerHTML=`<div class="empty">Sin registros aún.</div>`; return; }
+      let h="<table><thead><tr>";
+      COLS_PAGOS.forEach(c=> h+=`<th>${c[1]}</th>`);
+      h+="<th>Seguimiento</th></tr></thead><tbody>";
+      rows.forEach(r=>{
+        h+="<tr>";
+        COLS_PAGOS.forEach(c=>{
+          const [k,,tipo]=c; let v=r[k];
+          if(tipo==="num") h+=`<td class="num">${fmtNum(v)}</td>`;
+          else if(tipo==="date") h+=`<td>${fmtDate(v)}</td>`;
+          else if(tipo==="status") h+=`<td><span class="status ${(v||"").toLowerCase()==="pagado"?"st-pagado":"st-otro"}">${esc(v)}</span></td>`;
+          else h+=`<td>${esc(v)}</td>`;
+        });
+        h+=`<td><span class="link" onclick="abrirComentarios('${r.id}')">💬 Comentarios</span></td></tr>`;
+      });
+      h+="</tbody></table>";
+      $("table-p").className=""; $("table-p").innerHTML=h;
+    }
+    $("search-p").oninput = (e)=>{
+      const q=e.target.value.toLowerCase();
+      pintarPagos(dataP.filter(r=>[r.proyecto,r.oc,r.razon_social].some(x=>(x||"").toString().toLowerCase().includes(q))));
+    };
+
+    // ---- Comentarios (cronograma) ----
+    let compraActual = null;
+    async function abrirComentarios(id){
+      compraActual = dataP.find(r=>r.id===id);
+      $("cmt-sub").textContent = `Proyecto ${compraActual.proyecto||"—"} · OC ${compraActual.oc||"—"}`;
+      $("cmt-info").innerHTML =
+        `<p class="kv"><b>Razón social:</b> ${esc(compraActual.razon_social)}</p>
+         <p class="kv"><b>Estatus pago:</b> ${esc(compraActual.estatus_pago)||"—"}</p>
+         <p class="kv"><b>Factura:</b> ${esc(compraActual.factura)||"—"}</p>`;
+      $("cmt-text").value="";
+      $("ov-cmt").classList.add("show");
+      cargarTimeline(id);
+    }
+    async function cargarTimeline(id){
+      $("cmt-timeline").innerHTML=`<div class="spin">Cargando comentarios…</div>`;
+      const { data, error } = await sb.from("comentarios_pago")
+        .select("*").eq("compra_id",id).order("created_at",{ascending:false});
+      if(error){ $("cmt-timeline").innerHTML=`<div class="empty">${esc(error.message)}</div>`; return; }
+      if(!data.length){ $("cmt-timeline").innerHTML=`<div class="empty">Aún no hay comentarios.</div>`; return; }
+      $("cmt-timeline").innerHTML = data.map(c=>
+        `<div class="cmt"><div class="meta">${esc(c.usuario_email)} · ${new Date(c.created_at).toLocaleString("es-MX")}</div>
+         <div class="txt">${esc(c.comentario)}</div></div>`).join("");
+    }
+    $("cmt-close").onclick = ()=> $("ov-cmt").classList.remove("show");
+    $("cmt-add").onclick = async ()=>{
+      const txt = $("cmt-text").value.trim();
+      if(!txt) return;
+      $("cmt-add").disabled=true;
+      const { error } = await sb.from("comentarios_pago").insert({
+        compra_id: compraActual.id, usuario_id: USER.id,
+        usuario_email: USER.email, comentario: txt
+      });
+      $("cmt-add").disabled=false;
+      if(error){ toast("Error: "+error.message); return; }
+      $("cmt-text").value="";
+      cargarTimeline(compraActual.id);
+    };
+    window.abrirComentarios = abrirComentarios;
+  </script>
+</body>
+</html>
