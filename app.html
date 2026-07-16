@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Control de Pagos</title>
+  <style>
+    :root{
+      --azul:#2563eb; --azul-osc:#1d4ed8; --indigo:#4338ca; --tinta:#0f172a; --gris:#64748b; --gris2:#94a3b8;
+      --linea:#e6e9f0; --fondo:#f3f5f9; --card:#ffffff; --side:#111827; --side2:#1f2937;
+      --verde:#059669; --ambar:#d97706; --rojo:#dc2626;
+    }
+    *{ margin:0; padding:0; box-sizing:border-box; }
+    body{ font-family:"Segoe UI",-apple-system,Roboto,Helvetica,Arial,sans-serif; background:var(--fondo);
+      color:var(--tinta); -webkit-font-smoothing:antialiased; }
+    .layout{ display:flex; min-height:100vh; }
+
+    /* Sidebar */
+    .sidebar{ width:242px; background:linear-gradient(180deg,#111827,#0b1220); color:#cbd5e1;
+      display:flex; flex-direction:column; position:fixed; inset:0 auto 0 0; z-index:40; }
+    .brand{ display:flex; align-items:center; gap:11px; padding:20px 20px 22px; }
+    .brand .logo{ width:40px; height:40px; border-radius:12px; background:linear-gradient(135deg,#60a5fa,#2563eb);
+      color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:17px;
+      box-shadow:0 6px 16px rgba(37,99,235,.45); }
+    .brand span{ font-size:16px; font-weight:700; color:#fff; letter-spacing:-.2px; }
+    .side-nav{ flex:1; padding:8px 12px; display:flex; flex-direction:column; gap:3px; }
+    .side-item{ display:flex; align-items:center; gap:12px; padding:12px 14px; border-radius:11px; cursor:pointer;
+      color:#cbd5e1; font-size:14px; font-weight:600; border:none; background:none; text-align:left; transition:.15s; width:100%; }
+    .side-item:hover{ background:var(--side2); color:#fff; }
+    .side-item.active{ background:linear-gradient(135deg,#2563eb,#1d4ed8); color:#fff; box-shadow:0 6px 16px rgba(37,99,235,.45); }
+    .side-item .ic{ font-size:16px; width:20px; text-align:center; }
+    .side-foot{ padding:16px; border-top:1px solid #1f2937; }
+    .side-user{ font-size:12.5px; color:#94a3b8; margin-bottom:5px; word-break:break-all; }
+    .side-role{ font-size:10px; font-weight:800; letter-spacing:.06em; padding:2px 9px; border-radius:20px;
+      background:#1e293b; color:#93c5fd; display:inline-block; margin-bottom:12px; }
+    .side-logout{ width:100%; padding:10px; border:1px solid #334155; background:transparent; color:#cbd5e1;
+      border-radius:10px; font-size:13px; font-weight:600; cursor:pointer; transition:.15s; }
+    .side-logout:hover{ background:#1f2937; color:#fff; }
+
+    /* Content */
+    .content{ flex:1; margin-left:242px; padding:28px 32px 60px; }
+    .page-title{ font-size:23px; font-weight:800; letter-spacing:-.4px; margin-bottom:3px; }
+    .page-sub{ font-size:13.5px; color:var(--gris); margin-bottom:22px; }
+
+    /* KPIs */
+    .kpis{ display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:16px; margin-bottom:24px; }
+    .kpi{ background:var(--card); border:1px solid var(--linea); border-radius:16px; padding:17px 20px;
+      box-shadow:0 2px 10px rgba(15,23,42,.04); position:relative; overflow:hidden; }
+    .kpi::before{ content:""; position:absolute; left:0; top:0; bottom:0; width:5px; background:var(--azul); }
+    .kpi.green::before{ background:var(--verde); } .kpi.amber::before{ background:var(--ambar); }
+    .kpi.indigo::before{ background:var(--indigo); }
+    .kpi .lbl{ font-size:11px; font-weight:700; color:var(--gris2); text-transform:uppercase; letter-spacing:.05em; }
+    .kpi .val{ font-size:25px; font-weight:800; margin-top:7px; letter-spacing:-.5px; }
+
+    /* Toolbar */
+    .toolbar{ display:flex; gap:12px; align-items:center; margin-bottom:16px; flex-wrap:wrap; }
+    .search-wrap{ position:relative; flex:1; min-width:240px; }
+    .search-wrap svg{ position:absolute; left:14px; top:50%; transform:translateY(-50%); width:16px; height:16px; opacity:.4; }
+    .search{ width:100%; padding:11px 14px 11px 40px; border:1px solid var(--linea); border-radius:11px;
+      font-size:14px; background:#fff; outline:none; transition:.15s; }
+    .search:focus{ border-color:var(--azul); box-shadow:0 0 0 3px rgba(37,99,235,.12); }
+    .btn{ background:var(--azul); color:#fff; border:none; padding:11px 18px; border-radius:11px;
+      font-size:13.5px; font-weight:600; cursor:pointer; transition:.15s; }
+    .btn:hover{ background:var(--azul-osc); }
+    .btn.ghost{ background:#fff; color:var(--azul); border:1px solid var(--azul); }
+    .btn.ghost:hover{ background:#eff6ff; }
+    .btn.danger{ background:#fff; color:var(--rojo); border:1px solid #fecaca; }
+    .btn.danger:hover{ background:#fef2f2; }
+    .count{ font-size:13px; color:var(--gris); font-weight:600; white-space:nowrap;
+      background:#fff; border:1px solid var(--linea); padding:9px 14px; border-radius:20px; }
+
+    /* Tabla */
+    .tablewrap{ overflow:auto; border:1px solid var(--linea); border-radius:16px; background:#fff;
+      box-shadow:0 4px 20px rgba(2,6,23,.05); max-height:70vh; }
+    table{ border-collapse:separate; border-spacing:0; width:100%; font-size:13px; white-space:nowrap; }
+    thead th{ position:sticky; top:0; background:linear-gradient(180deg,#eef3ff,#e2e9fb); text-align:left;
+      padding:13px 16px; font-size:10.5px; font-weight:800; color:#3730a3; letter-spacing:.05em;
+      text-transform:uppercase; border-bottom:2px solid #c7d2fe; z-index:5; }
+    thead th.r{ text-align:right; }
+    tbody td{ padding:12px 16px; border-bottom:1px solid #eef1f6; color:#1e293b; }
+    tbody tr:nth-child(even) td{ background:#f7f9fd; }
+    tbody tr:hover td{ background:#e8f0ff; }
+    tbody tr:last-child td{ border-bottom:none; }
+    .num{ text-align:right; font-variant-numeric:tabular-nums; }
+    .neg{ color:var(--rojo); font-weight:600; }
+    .muted{ color:#cbd5e1; }
+    .proyecto{ font-weight:700; color:var(--indigo); }
+    .pill{ display:inline-block; padding:3px 11px; border-radius:20px; font-size:11px; font-weight:700; line-height:1.7; }
+    .pill-green{ background:#dcfce7; color:#15803d; } .pill-blue{ background:#dbeafe; color:#1e40af; }
+    .pill-amber{ background:#fef3c7; color:#b45309; } .pill-red{ background:#fee2e2; color:#b91c1c; }
+    .pill-gray{ background:#eef2f7; color:#475569; }
+    .acts{ display:flex; gap:12px; }
+    .link{ color:var(--azul); cursor:pointer; font-weight:600; font-size:12.5px; white-space:nowrap; }
+    .link:hover{ text-decoration:underline; }
+    .link.edit{ color:var(--indigo); }
+    .empty,.spin{ padding:56px; text-align:center; color:#94a3b8; font-size:14px; }
+    .hidden{ display:none; }
+
+    /* Modales */
+    .overlay{ position:fixed; inset:0; background:rgba(15,23,42,.55); backdrop-filter:blur(3px); display:none;
+      align-items:center; justify-content:center; z-index:60; padding:16px; }
+    .overlay.show{ display:flex; }
+    .modal{ background:#fff; border-radius:20px; width:100%; max-width:580px; max-height:90vh; overflow:auto;
+      padding:26px; box-shadow:0 24px 70px rgba(15,23,42,.35); }
+    .modal.lg{ max-width:780px; }
+    .modal h3{ font-size:19px; margin-bottom:5px; }
+    .modal .sub{ font-size:13px; color:var(--gris); margin-bottom:18px; }
+    .modal-actions{ display:flex; gap:10px; justify-content:flex-end; margin-top:20px; flex-wrap:wrap; }
+    .kv{ font-size:13.5px; margin:5px 0; color:#334155; } .kv b{ color:#0f172a; }
+    .divider{ height:1px; background:var(--linea); margin:18px 0; }
+    textarea{ width:100%; min-height:76px; padding:12px; border:1px solid var(--linea); border-radius:11px;
+      font-family:inherit; font-size:14px; resize:vertical; outline:none; }
+    textarea:focus,.fld:focus{ border-color:var(--azul); box-shadow:0 0 0 3px rgba(37,99,235,.12); }
+    .form-grid{ display:grid; grid-template-columns:1fr 1fr; gap:13px 16px; }
+    .field label{ display:block; font-size:11px; font-weight:700; color:var(--gris); text-transform:uppercase;
+      letter-spacing:.03em; margin-bottom:5px; }
+    .fld{ width:100%; padding:9px 11px; border:1px solid var(--linea); border-radius:9px; font-size:13.5px;
+      font-family:inherit; outline:none; transition:.15s; }
+    .field.full{ grid-column:1 / -1; }
+    .timeline{ margin-top:16px; }
+    .cmt{ border-left:3px solid var(--azul); padding:9px 0 9px 14px; margin-bottom:14px;
+      background:linear-gradient(90deg,#f8fbff,transparent); border-radius:0 8px 8px 0; }
+    .cmt .meta{ font-size:11px; color:#94a3b8; margin-bottom:4px; font-weight:600; }
+    .cmt .txt{ font-size:14px; line-height:1.55; white-space:pre-wrap; }
+    .toast{ position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:#0f172a; color:#fff;
+      padding:12px 22px; border-radius:11px; font-size:13.5px; z-index:99; display:none; box-shadow:0 10px 30px rgba(0,0,0,.3); }
+    .toast.show{ display:block; }
+    .subtabs{ display:flex; gap:8px; margin-bottom:14px; }
+    .subtab{ padding:8px 15px; border:1px solid var(--linea); background:#fff; border-radius:9px; font-size:13px;
+      font-weight:600; color:#475569; cursor:pointer; }
+    .subtab.active{ background:var(--azul); color:#fff; border-color:var(--azul); }
+    pre{ background:#f8fafc; border:1px solid var(--linea); border-radius:9px; padding:12px; font-size:11.5px;
+      overflow:auto; white-space:pre-wrap; word-break:break-word; }
+    @media(max-width:820px){ .sidebar{ width:62px; } .brand span{ display:none; } .side-item .txt{ display:none; }
+      .side-user,.side-role{ display:none; } .content{ margin-left:62px; padding:20px 15px; } }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand"><div class="logo">CP</div><span>Control de Pagos</span></div>
+      <nav class="side-nav" id="nav"></nav>
+      <div class="side-foot">
+        <div class="side-user" id="side-user"></div>
+        <div class="side-role" id="side-role"></div>
+        <button class="side-logout" id="logout">Cerrar sesión</button>
+      </div>
+    </aside>
+
+    <div class="content">
+      <section id="mod-general" class="hidden">
+        <div class="page-title">General Compras</div>
+        <div class="page-sub" id="sub-general"></div>
+        <div class="kpis" id="kpis-g"></div>
+        <div class="toolbar">
+          <div class="search-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <input class="search" id="search-g" placeholder="Buscar por proyecto, OC, razón social, concepto..." />
+          </div>
+          <button class="btn ghost hidden" id="btn-import">⬆ Cargar Excel</button>
+          <input type="file" id="file-import" accept=".xlsx,.xls" class="hidden" />
+          <span class="count" id="count-g"></span>
+        </div>
+        <div class="tablewrap"><div id="table-g" class="spin">Cargando…</div></div>
+      </section>
+
+      <section id="mod-pagos" class="hidden">
+        <div class="page-title">Pagos</div>
+        <div class="page-sub">Seguimiento de pagos. Agrega comentarios en la línea de tiempo de cada OC.</div>
+        <div class="kpis" id="kpis-p"></div>
+        <div class="toolbar">
+          <div class="search-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <input class="search" id="search-p" placeholder="Buscar por proyecto, OC, razón social..." />
+          </div>
+          <span class="count" id="count-p"></span>
+        </div>
+        <div class="tablewrap"><div id="table-p" class="spin">Cargando…</div></div>
+      </section>
+
+      <section id="mod-audit" class="hidden">
+        <div class="page-title">Auditoría</div>
+        <div class="page-sub">Bitácora de accesos, cargas y cambios de datos. Solo administradores.</div>
+        <div class="subtabs">
+          <button class="subtab active" data-s="act">Actividad (accesos / cargas)</button>
+          <button class="subtab" data-s="dat">Cambios de datos</button>
+        </div>
+        <div id="audit-act">
+          <div class="toolbar"><span class="count" id="count-a1"></span></div>
+          <div class="tablewrap"><div id="table-a1" class="spin">Cargando…</div></div>
+        </div>
+        <div id="audit-dat" class="hidden">
+          <div class="toolbar"><span class="count" id="count-a2"></span></div>
+          <div class="tablewrap"><div id="table-a2" class="spin">Cargando…</div></div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- Modal comentarios -->
+  <div class="overlay" id="ov-cmt"><div class="modal">
+    <h3>Seguimiento / Comentarios</h3><p class="sub" id="cmt-sub"></p>
+    <div id="cmt-info"></div><div class="divider"></div>
+    <label style="font-size:13px;font-weight:600;">Nuevo comentario</label>
+    <textarea id="cmt-text" placeholder="Escribe un comentario para el cronograma..."></textarea>
+    <div class="modal-actions"><button class="btn ghost" id="cmt-close">Cerrar</button>
+      <button class="btn" id="cmt-add">Agregar comentario</button></div>
+    <div class="timeline" id="cmt-timeline"></div>
+  </div></div>
+
+  <!-- Modal editar -->
+  <div class="overlay" id="ov-edit"><div class="modal lg">
+    <h3>Editar línea</h3><p class="sub" id="edit-sub"></p>
+    <div class="form-grid" id="edit-form"></div>
+    <div class="modal-actions">
+      <button class="btn danger" id="edit-delete" style="margin-right:auto;">🗑 Eliminar línea</button>
+      <button class="btn ghost" id="edit-cancel">Cancelar</button>
+      <button class="btn" id="edit-save">Guardar cambios</button>
+    </div>
+  </div></div>
+
+  <!-- Modal importar -->
+  <div class="overlay" id="ov-import"><div class="modal">
+    <h3>Cargar Excel</h3><p class="sub" id="imp-sub"></p>
+    <p class="kv">¿Qué deseas hacer con la información del archivo?</p>
+    <div class="modal-actions" style="justify-content:flex-start;">
+      <button class="btn ghost" id="imp-append">➕ Agregar a lo existente</button>
+      <button class="btn" id="imp-replace" style="background:#dc2626;">♻ Reemplazar todo</button></div>
+    <div class="modal-actions"><button class="btn ghost" id="imp-cancel">Cancelar</button></div>
+  </div></div>
+
+  <!-- Modal detalle auditoria -->
+  <div class="overlay" id="ov-aud"><div class="modal">
+    <h3>Detalle del cambio</h3><p class="sub" id="aud-sub"></p>
+    <div id="aud-body"></div>
+    <div class="modal-actions"><button class="btn ghost" id="aud-close">Cerrar</button></div>
+  </div></div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="js/config.js"></script>
+  <script>
+    const $ = (id)=>document.getElementById(id);
+    let USER=null, filasImport=null, editId=null;
+    const esAdmin   = ()=> USER && USER.rol==="admin";
+    const esGestor  = ()=> USER && (USER.rol==="admin" || USER.rol==="compras");
+
+    const COLS_GENERAL = [
+      ["estatus_entrega_finanzas","ESTATUS ENTREGA FINANZAS","estatusfin"],
+      ["estatus_pago","ESTATUS PAGO","estatuspago"],
+      ["fecha_pago","FECHA DE PAGO","date"],
+      ["cantidad_pagada","CANTIDAD PAGADA","money"],
+      ["diferencia_pago_vs_factura","DIFERENCIA PAGO VS FACTURA","money"],
+      ["fecha_solicitud","FECHA SOLICITUD","date"],
+      ["proyecto","PROYECTO","proyecto"],
+      ["oc","OC","texto"],
+      ["concepto","CONCEPTO","texto"],
+      ["razon_social","RAZON SOCIAL","texto"],
+      ["moneda","MONEDA","texto"],
+      ["total_oc","TOTAL OC","money"],
+      ["total_a_pagar","TOTAL A PAGAR","money"],
+      ["folio_fiscal","FOLIOFISCAL","texto"],
+      ["condiciones_pago","CONDICIONES DE PAGO","texto"],
+      ["observaciones","OBSERVACIONES","texto"],
+      ["factura_en_sistema","FACTURA EN SISTEMA","texto"],
+      ["evidencia_estimacion","EVIDENCIA o ESTIMACION","texto"],
+      ["validacion_material","VALIDACION DE MATERIAL","texto"],
+      ["obs_finanzas","OBS FINANZAS","texto"],
+      ["conteo_dev","CONTEO DEV","texto"],
+    ];
+    const COLS_PAGOS = [
+      ["estatus_entrega_finanzas","ESTATUS ENTREGA FINANZAS","estatusfin"],
+      ["estatus_pago","ESTATUS PAGO","estatuspago"],
+      ["fecha_pago","FECHA DE PAGO","date"],
+      ["cantidad_pagada","CANTIDAD PAGADA","money"],
+      ["diferencia_pago_vs_factura","DIFERENCIA PAGO VS FACTURA","money"],
+      ["proyecto","PROYECTO","proyecto"],
+      ["oc","OC","texto"],
+      ["razon_social","RAZON SOCIAL","texto"],
+      ["moneda","MONEDA","texto"],
+      ["cantidad_factura","CANTIDAD FACTURA","money"],
+      ["cantidad_solicitada","CANTIDAD SOLICITADA","money"],
+      ["factura","FACTURA","texto"],
+      ["observaciones","OBSERVACIONES","texto"],
+    ];
+    const HEADER_MAP={}; COLS_GENERAL.forEach(c=>HEADER_MAP[c[1].toUpperCase().trim()]=c[0]);
+    const isNum=t=>t==="money";
+
+    function fmtMoney(v){ if(v===null||v===undefined||v==="") return '<span class="muted">—</span>';
+      const n=Number(v); if(isNaN(n)) return esc(v);
+      const s=n.toLocaleString("es-MX",{minimumFractionDigits:2,maximumFractionDigits:2});
+      return n<0?`<span class="neg">${s}</span>`:s; }
+    function fmtDate(v){ if(!v) return '<span class="muted">—</span>'; const d=new Date(v);
+      return isNaN(d)?esc(v):d.toLocaleDateString("es-MX",{day:"2-digit",month:"short",year:"numeric"}); }
+    function fmtDT(v){ if(!v) return ""; return new Date(v).toLocaleString("es-MX"); }
+    function esc(s){ return (s??"").toString().replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+    function pillPago(v){ if(!v) return '<span class="muted">—</span>'; const t=v.toString().toLowerCase();
+      const cls=t==="pagado"?"pill-green":(t.includes("cancel")||t.includes("rechaz"))?"pill-red":"pill-amber";
+      return `<span class="pill ${cls}">${esc(v)}</span>`; }
+    function pillFin(v){ if(!v) return '<span class="muted">—</span>'; const t=v.toString().toLowerCase();
+      const cls=t.includes("devuel")||t.includes("error")?"pill-red":"pill-blue";
+      return `<span class="pill ${cls}">${esc(v)}</span>`; }
+    function celda(tipo,v){ switch(tipo){
+      case "money": return `<td class="num">${fmtMoney(v)}</td>`;
+      case "date": return `<td>${fmtDate(v)}</td>`;
+      case "estatuspago": return `<td>${pillPago(v)}</td>`;
+      case "estatusfin": return `<td>${pillFin(v)}</td>`;
+      case "proyecto": return `<td class="proyecto">${v?esc(v):'<span class="muted">—</span>'}</td>`;
+      default: return `<td>${v?esc(v):'<span class="muted">—</span>'}</td>`; } }
+    function toast(t){ const el=$("toast"); el.textContent=t; el.classList.add("show"); setTimeout(()=>el.classList.remove("show"),2800); }
+    const money=n=>"$"+(Number(n)||0).toLocaleString("es-MX",{minimumFractionDigits:2,maximumFractionDigits:2});
+
+    async function fetchAll(tabla,orderCol){ const CHUNK=1000; let from=0,all=[];
+      while(true){ let q=sb.from(tabla).select("*").range(from,from+CHUNK-1);
+        if(orderCol) q=q.order(orderCol,{ascending:false});
+        const {data,error}=await q; if(error) throw error; all=all.concat(data||[]);
+        if(!data||data.length<CHUNK) break; from+=CHUNK; } return all; }
+
+    function kpiCards(cont,items){ cont.innerHTML=items.map(k=>
+      `<div class="kpi ${k[2]||''}"><div class="lbl">${k[0]}</div><div class="val">${k[1]}</div></div>`).join(""); }
+    function calcKpis(rows){ const n=rows.length;
+      const pag=rows.filter(r=>(r.estatus_pago||"").toString().toLowerCase()==="pagado").length;
+      const mxn=rows.filter(r=>r.moneda==="MXN").reduce((s,r)=>s+(Number(r.total_a_pagar??r.cantidad_solicitada)||0),0);
+      const usd=rows.filter(r=>r.moneda==="USD").reduce((s,r)=>s+(Number(r.total_a_pagar??r.cantidad_solicitada)||0),0);
+      return [["Registros",n.toLocaleString("es-MX"),"indigo"],["Pagados",pag.toLocaleString("es-MX"),"green"],
+        ["Pendientes",(n-pag).toLocaleString("es-MX"),"amber"],["Total a pagar (MXN)",money(mxn)],["Total a pagar (USD)",money(usd)]]; }
+
+    // ===== arranque =====
+    (async ()=>{
+      USER=await obtenerUsuarioYRol();
+      if(!USER){ location.href="login.html"; return; }
+      $("side-user").textContent=USER.email;
+      $("side-role").textContent=USER.rol.toUpperCase();
+      $("sub-general").textContent = esAdmin()
+        ? "Datos completos. Haz clic en ✏ Editar para modificar una línea; los cambios se reflejan en Pagos."
+        : "Datos completos de solicitudes y órdenes de compra. Puedes cargar Excel y comentar.";
+      $("btn-import").classList.toggle("hidden", !esGestor());
+      const items=[];
+      if(esGestor()) items.push(["general","📋","General Compras"]);
+      items.push(["pagos","💳","Pagos"]);
+      if(esAdmin()) items.push(["audit","🕵","Auditoría"]);
+      $("nav").innerHTML=items.map((it,i)=>
+        `<button class="side-item ${i===0?'active':''}" data-t="${it[0]}"><span class="ic">${it[1]}</span><span class="txt">${it[2]}</span></button>`).join("");
+      $("nav").querySelectorAll(".side-item").forEach(b=>{ b.onclick=()=>{
+        $("nav").querySelectorAll(".side-item").forEach(x=>x.classList.remove("active"));
+        b.classList.add("active"); mostrar(b.dataset.t); }; });
+      mostrar(items[0][0]);
+    })();
+
+    function mostrar(t){
+      $("mod-general").classList.toggle("hidden",t!=="general");
+      $("mod-pagos").classList.toggle("hidden",t!=="pagos");
+      $("mod-audit").classList.toggle("hidden",t!=="audit");
+      if(t==="general") cargarGeneral();
+      if(t==="pagos") cargarPagos();
+      if(t==="audit") cargarAuditoria();
+    }
+    $("logout").onclick=async()=>{ await logEvento("logout","Cierre de sesión"); await sb.auth.signOut(); location.href="login.html"; };
+
+    // ===== GENERAL =====
+    let dataG=[];
+    async function cargarGeneral(){ $("table-g").className="spin"; $("table-g").textContent="Cargando…";
+      try{ dataG=await fetchAll("compras","fecha_solicitud"); }
+      catch(e){ $("table-g").innerHTML=`<div class="empty">Error: ${esc(e.message)}</div>`; return; }
+      renderG(dataG); }
+    function renderG(rows){ $("count-g").textContent=`${rows.length.toLocaleString("es-MX")} registros`;
+      kpiCards($("kpis-g"),calcKpis(rows));
+      if(!rows.length){ $("table-g").className=""; $("table-g").innerHTML=`<div class="empty">Sin registros. Carga un Excel para empezar.</div>`; return; }
+      let h="<table><thead><tr>"; COLS_GENERAL.forEach(c=>h+=`<th class="${isNum(c[2])?'r':''}">${c[1]}</th>`);
+      h+="<th>ACCIONES</th></tr></thead><tbody>";
+      rows.forEach(r=>{ h+="<tr>"; COLS_GENERAL.forEach(c=>h+=celda(c[2],r[c[0]]));
+        let acc=`<span class="link" onclick="abrirComentarios('${r.id}','g')">💬 Comentar</span>`;
+        if(esAdmin()) acc+=`<span class="link edit" onclick="abrirEdit('${r.id}')">✏ Editar</span>`;
+        h+=`<td><div class="acts">${acc}</div></td></tr>`; });
+      h+="</tbody></table>"; $("table-g").className=""; $("table-g").innerHTML=h; }
+    $("search-g").oninput=(e)=>{ const q=e.target.value.toLowerCase();
+      renderG(dataG.filter(r=>[r.proyecto,r.oc,r.razon_social,r.concepto].some(x=>(x||"").toString().toLowerCase().includes(q)))); };
+
+    // ---- editar (solo admin) ----
+    function abrirEdit(id){ if(!esAdmin()) return; const r=dataG.find(x=>x.id===id); if(!r) return; editId=id;
+      $("edit-sub").textContent=`Proyecto ${r.proyecto||"—"} · OC ${r.oc||"—"}`;
+      $("edit-form").innerHTML=COLS_GENERAL.map(c=>{ const [k,t,tipo]=c;
+        const full=(k==="concepto"||k==="observaciones"||k==="obs_finanzas")?"full":"";
+        const val=r[k]==null?"":r[k]; let inp;
+        if(tipo==="money") inp=`<input class="fld" id="f_${k}" type="number" step="any" value="${esc(val)}">`;
+        else if(tipo==="date") inp=`<input class="fld" id="f_${k}" type="date" value="${val?String(val).slice(0,10):''}">`;
+        else inp=`<input class="fld" id="f_${k}" type="text" value="${esc(val)}">`;
+        return `<div class="field ${full}"><label>${t}</label>${inp}</div>`; }).join("");
+      $("ov-edit").classList.add("show"); }
+    window.abrirEdit=abrirEdit;
+    $("edit-cancel").onclick=()=>$("ov-edit").classList.remove("show");
+    $("edit-save").onclick=async()=>{ $("edit-save").disabled=true; const patch={};
+      COLS_GENERAL.forEach(c=>{ const el=$("f_"+c[0]); if(!el) return; let v=el.value;
+        if(v==="") v=null; else if(c[2]==="money") v=Number(v); patch[c[0]]=v; });
+      const {error}=await sb.from("compras").update(patch).eq("id",editId);
+      $("edit-save").disabled=false;
+      if(error){ toast("Error al guardar: "+error.message); return; }
+      toast("✔ Cambios guardados (reflejados en Pagos)."); $("ov-edit").classList.remove("show"); cargarGeneral(); };
+    $("edit-delete").onclick=async()=>{ if(!confirm("¿Eliminar esta línea? No se puede deshacer.")) return;
+      const {error}=await sb.from("compras").delete().eq("id",editId);
+      if(error){ toast("Error al eliminar: "+error.message); return; }
+      toast("✔ Línea eliminada."); $("ov-edit").classList.remove("show"); cargarGeneral(); };
+
+    // ---- importar ----
+    $("btn-import").onclick=()=>$("file-import").click();
+    $("file-import").onchange=(e)=>{ const file=e.target.files[0]; if(!file) return; const reader=new FileReader();
+      reader.onload=(ev)=>{ try{
+        const wb=XLSX.read(new Uint8Array(ev.target.result),{type:"array",cellDates:true});
+        const sheetName=wb.SheetNames.find(n=>/general/i.test(n))||wb.SheetNames[0];
+        const raw=XLSX.utils.sheet_to_json(wb.Sheets[sheetName],{defval:null,raw:true});
+        filasImport=mapearFilas(raw);
+        if(!filasImport.length){ toast("No se encontraron filas válidas."); return; }
+        $("imp-sub").textContent=`Hoja "${sheetName}": ${filasImport.length} filas listas para cargar.`;
+        $("ov-import").classList.add("show");
+      }catch(err){ toast("Error al leer: "+err.message); } $("file-import").value=""; };
+      reader.readAsArrayBuffer(file); };
+    function mapearFilas(raw){ const out=[]; raw.forEach(row=>{ const obj={}; let vacio=true;
+      Object.keys(row).forEach(h=>{ const key=HEADER_MAP[h.toUpperCase().trim()]; if(!key) return;
+        let v=row[h]; if(v==="#REF!"||v==="#N/A"||v==="") v=null;
+        if(v instanceof Date) v=v.toISOString().slice(0,10);
+        obj[key]=v; if(v!==null&&v!==undefined) vacio=false; });
+      if(!vacio) out.push(obj); }); return out; }
+    $("imp-cancel").onclick=()=>{ filasImport=null; $("ov-import").classList.remove("show"); };
+    $("imp-append").onclick=()=>ejecutarImport(false);
+    $("imp-replace").onclick=()=>ejecutarImport(true);
+    async function ejecutarImport(reemplazar){ if(!filasImport) return; $("ov-import").classList.remove("show");
+      toast(reemplazar?"Reemplazando datos…":"Agregando datos…");
+      try{ if(reemplazar){ const {error:d}=await sb.from("compras").delete().not("id","is",null); if(d) throw d; }
+        for(let i=0;i<filasImport.length;i+=500){ const {error}=await sb.from("compras").insert(filasImport.slice(i,i+500)); if(error) throw error; }
+        const n=filasImport.length; await logEvento("carga_excel",(reemplazar?"Reemplazó todo con ":"Agregó ")+n+" registros");
+        toast(`✔ ${n} registros cargados.`); filasImport=null; cargarGeneral();
+      }catch(err){ toast("Error al cargar: "+err.message); } }
+
+    // ===== PAGOS =====
+    let dataP=[];
+    async function cargarPagos(){ $("table-p").className="spin"; $("table-p").textContent="Cargando…";
+      try{ dataP=await fetchAll("vista_pagos",null); }
+      catch(e){ $("table-p").innerHTML=`<div class="empty">Error: ${esc(e.message)}</div>`; return; }
+      renderP(dataP); }
+    function renderP(rows){ $("count-p").textContent=`${rows.length.toLocaleString("es-MX")} registros`;
+      kpiCards($("kpis-p"),calcKpis(rows));
+      if(!rows.length){ $("table-p").className=""; $("table-p").innerHTML=`<div class="empty">Sin registros aún.</div>`; return; }
+      let h="<table><thead><tr>"; COLS_PAGOS.forEach(c=>h+=`<th class="${isNum(c[2])?'r':''}">${c[1]}</th>`);
+      h+="<th>SEGUIMIENTO</th></tr></thead><tbody>";
+      rows.forEach(r=>{ h+="<tr>"; COLS_PAGOS.forEach(c=>h+=celda(c[2],r[c[0]]));
+        h+=`<td><span class="link" onclick="abrirComentarios('${r.id}','p')">💬 Comentarios</span></td></tr>`; });
+      h+="</tbody></table>"; $("table-p").className=""; $("table-p").innerHTML=h; }
+    $("search-p").oninput=(e)=>{ const q=e.target.value.toLowerCase();
+      renderP(dataP.filter(r=>[r.proyecto,r.oc,r.razon_social].some(x=>(x||"").toString().toLowerCase().includes(q)))); };
+
+    // ---- comentarios (ambos modulos, mismo hilo por compra) ----
+    let compraActual=null;
+    function abrirComentarios(id,src){ const arr=src==="g"?dataG:dataP; compraActual=arr.find(r=>r.id===id); if(!compraActual) return;
+      $("cmt-sub").textContent=`Proyecto ${compraActual.proyecto||"—"} · OC ${compraActual.oc||"—"}`;
+      const fac=compraActual.factura||compraActual.folio_fiscal||"—";
+      $("cmt-info").innerHTML=`<p class="kv"><b>Razón social:</b> ${esc(compraActual.razon_social)}</p>
+        <p class="kv"><b>Estatus pago:</b> ${esc(compraActual.estatus_pago)||"—"}</p>
+        <p class="kv"><b>Factura:</b> ${esc(fac)}</p>`;
+      $("cmt-text").value=""; $("ov-cmt").classList.add("show"); cargarTimeline(id); }
+    window.abrirComentarios=abrirComentarios;
+    async function cargarTimeline(id){ $("cmt-timeline").innerHTML=`<div class="spin">Cargando comentarios…</div>`;
+      const {data,error}=await sb.from("comentarios_pago").select("*").eq("compra_id",id).order("created_at",{ascending:false});
+      if(error){ $("cmt-timeline").innerHTML=`<div class="empty">${esc(error.message)}</div>`; return; }
+      if(!data.length){ $("cmt-timeline").innerHTML=`<div class="empty">Aún no hay comentarios.</div>`; return; }
+      $("cmt-timeline").innerHTML=data.map(c=>`<div class="cmt"><div class="meta">${esc(c.usuario_email)} · ${fmtDT(c.created_at)}</div>
+        <div class="txt">${esc(c.comentario)}</div></div>`).join(""); }
+    $("cmt-close").onclick=()=>$("ov-cmt").classList.remove("show");
+    $("cmt-add").onclick=async()=>{ const txt=$("cmt-text").value.trim(); if(!txt) return; $("cmt-add").disabled=true;
+      const {error}=await sb.from("comentarios_pago").insert({compra_id:compraActual.id,usuario_id:USER.id,usuario_email:USER.email,comentario:txt});
+      $("cmt-add").disabled=false; if(error){ toast("Error: "+error.message); return; }
+      $("cmt-text").value=""; cargarTimeline(compraActual.id); };
+
+    // ===== AUDITORIA =====
+    document.querySelectorAll(".subtab").forEach(b=>{ b.onclick=()=>{
+      document.querySelectorAll(".subtab").forEach(x=>x.classList.remove("active")); b.classList.add("active");
+      $("audit-act").classList.toggle("hidden",b.dataset.s!=="act");
+      $("audit-dat").classList.toggle("hidden",b.dataset.s!=="dat"); }; });
+    let auditCargada=false;
+    async function cargarAuditoria(){ if(auditCargada) return; auditCargada=true;
+      const {data:acts,error:e1}=await sb.from("log_actividad").select("*").order("created_at",{ascending:false}).limit(1000);
+      if(e1){ $("table-a1").innerHTML=`<div class="empty">Error: ${esc(e1.message)}</div>`; }
+      else{ $("count-a1").textContent=`${acts.length} eventos`;
+        if(!acts.length){ $("table-a1").className=""; $("table-a1").innerHTML=`<div class="empty">Sin actividad aún.</div>`; }
+        else{ let h="<table><thead><tr><th>FECHA</th><th>USUARIO</th><th>EVENTO</th><th>DETALLE</th></tr></thead><tbody>";
+          acts.forEach(a=>h+=`<tr><td>${fmtDT(a.created_at)}</td><td>${esc(a.usuario_email)}</td><td><span class="pill pill-blue">${esc(a.evento)}</span></td><td>${esc(a.detalle)||'<span class="muted">—</span>'}</td></tr>`);
+          h+="</tbody></table>"; $("table-a1").className=""; $("table-a1").innerHTML=h; } }
+      const {data:auds,error:e2}=await sb.from("auditoria").select("*").order("created_at",{ascending:false}).limit(1000);
+      if(e2){ $("table-a2").innerHTML=`<div class="empty">Error: ${esc(e2.message)}</div>`; }
+      else{ window._auds=auds; $("count-a2").textContent=`${auds.length} cambios (últimos 1000)`;
+        if(!auds.length){ $("table-a2").className=""; $("table-a2").innerHTML=`<div class="empty">Sin cambios aún.</div>`; }
+        else{ let h="<table><thead><tr><th>FECHA</th><th>USUARIO</th><th>TABLA</th><th>OPERACIÓN</th><th>DETALLE</th></tr></thead><tbody>";
+          const opc={INSERT:"pill-green",UPDATE:"pill-amber",DELETE:"pill-red"};
+          auds.forEach((a,i)=>h+=`<tr><td>${fmtDT(a.created_at)}</td><td>${esc(a.usuario_email)}</td><td>${esc(a.tabla)}</td>
+            <td><span class="pill ${opc[a.operacion]||'pill-gray'}">${esc(a.operacion)}</span></td>
+            <td><span class="link" onclick="verAud(${i})">ver</span></td></tr>`);
+          h+="</tbody></table>"; $("table-a2").className=""; $("table-a2").innerHTML=h; } } }
+    window.verAud=(i)=>{ const a=window._auds[i];
+      $("aud-sub").textContent=`${a.tabla} · ${a.operacion} · ${fmtDT(a.created_at)} · ${a.usuario_email||""}`;
+      let b=""; if(a.datos_anteriores) b+=`<p class="kv"><b>Antes:</b></p><pre>${esc(JSON.stringify(a.datos_anteriores,null,2))}</pre>`;
+      if(a.datos_nuevos) b+=`<p class="kv"><b>Después:</b></p><pre>${esc(JSON.stringify(a.datos_nuevos,null,2))}</pre>`;
+      $("aud-body").innerHTML=b||"<p class='kv'>Sin detalle.</p>"; $("ov-aud").classList.add("show"); };
+    $("aud-close").onclick=()=>$("ov-aud").classList.remove("show");
+  </script>
+</body>
+</html>
