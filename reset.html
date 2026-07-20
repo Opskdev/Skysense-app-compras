@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nueva contraseña · Control de Pagos</title>
+  <style>
+    *{ margin:0; padding:0; box-sizing:border-box; }
+    body{ font-family:"Segoe UI",-apple-system,Roboto,Arial,sans-serif; background:#fff; color:#0f172a;
+      min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px; }
+    .card{ width:100%; max-width:400px; border:1px solid #e6e9f0; border-radius:18px; padding:36px 32px; box-shadow:0 10px 40px rgba(15,23,42,.06); }
+    .logo{ width:58px; height:58px; margin:0 auto 18px; border-radius:15px; background:linear-gradient(135deg,#4f46e5,#4338ca);
+      display:flex; align-items:center; justify-content:center; color:#fff; font-size:20px; font-weight:800; }
+    h2{ text-align:center; font-size:21px; margin-bottom:4px; } .muted{ text-align:center; color:#64748b; font-size:14px; margin-bottom:24px; }
+    label{ display:block; font-size:13px; font-weight:600; margin:14px 0 6px; }
+    input{ width:100%; padding:12px 14px; border:1px solid #d1d5db; border-radius:10px; font-size:15px; outline:none; }
+    input:focus{ border-color:#4f46e5; box-shadow:0 0 0 3px rgba(79,70,229,.12); }
+    .btn{ width:100%; margin-top:20px; background:#4f46e5; color:#fff; border:none; padding:13px; border-radius:10px; font-size:15px; font-weight:600; cursor:pointer; }
+    .btn:hover{ background:#4338ca; } .btn:disabled{ opacity:.6; cursor:not-allowed; }
+    .msg{ margin-top:16px; padding:11px 14px; border-radius:10px; font-size:13px; display:none; }
+    .msg.err{ background:#fef2f2; color:#b91c1c; display:block; } .msg.ok{ background:#ecfdf5; color:#047857; display:block; }
+    .links{ margin-top:18px; text-align:center; font-size:13px; } .links a{ color:#4f46e5; text-decoration:none; } .hidden{ display:none; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">CP</div>
+    <h2>Nueva contraseña</h2>
+    <p class="muted">Escribe y confirma tu nueva contraseña</p>
+    <div id="form">
+      <label>Nueva contraseña (mín. 6 caracteres)</label>
+      <input id="p1" type="password" placeholder="••••••••" />
+      <label>Confirmar contraseña</label>
+      <input id="p2" type="password" placeholder="••••••••" />
+      <button class="btn" id="save">Guardar contraseña</button>
+    </div>
+    <div id="msg" class="msg"></div>
+    <div class="links"><a href="login.html">← Ir a iniciar sesión</a></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/config.js"></script>
+  <script>
+    const $=(id)=>document.getElementById(id);
+    const msg=$("msg");
+    function show(t,ok=false){ msg.textContent=t; msg.className="msg "+(ok?"ok":"err"); }
+    let listo=false;
+    sb.auth.onAuthStateChange((ev)=>{ if(ev==="PASSWORD_RECOVERY") listo=true; });
+
+    // Al cargar, supabase procesa el token del enlace. Verificamos que haya sesión de recuperación.
+    window.addEventListener("load", ()=>{ setTimeout(async ()=>{
+      const { data:{ session } } = await sb.auth.getSession();
+      if(!session && !listo){
+        show("El enlace no es válido o ya expiró. Vuelve a iniciar sesión y solicita uno nuevo en «¿Olvidaste tu contraseña?».");
+        $("form").classList.add("hidden");
+      }
+    }, 900); });
+
+    $("save").onclick = async ()=>{
+      msg.className="msg";
+      const p1=$("p1").value, p2=$("p2").value;
+      if(p1.length<6) return show("La contraseña debe tener al menos 6 caracteres.");
+      if(p1!==p2) return show("Las contraseñas no coinciden.");
+      $("save").disabled=true;
+      try{
+        const { error }=await sb.auth.updateUser({ password:p1 });
+        if(error) return show(error.message);
+        show("✔ Contraseña actualizada. Entrando…", true);
+        setTimeout(()=> location.href="app.html", 1500);
+      }catch(e){ show("No se pudo conectar. Intenta de nuevo."); }
+      finally{ $("save").disabled=false; }
+    };
+  </script>
+</body>
+</html>
